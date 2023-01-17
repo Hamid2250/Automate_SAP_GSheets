@@ -1,10 +1,9 @@
 import re
 from time import sleep
 
-import pyautogui as pag
 import pygetwindow as gw
-from pyrobogui import robo
-import pywinauto
+from pyrobogui import robo, pag
+# import pywinauto
 
 
 def isOpen(appName):
@@ -28,7 +27,7 @@ def launchApp(appName):
     if not isOpen(appName):
         # Press the start key
         pag.press("win")
-
+        sleep(1)
         # Type the name of the app
         pag.typewrite(appName)
 
@@ -48,7 +47,7 @@ def sapRT():
     robo.waitImageToAppear(image='./images/getRT_position.png')
     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
     while not pag.locateOnScreen(image='./images/zeroRT.png') or not pag.locateOnScreen(image='./images/lastRT.png'):
-        pag.screenshot('./images/lastRT.png', region=(ms_position.left, ms_position.top, 120, 25))
+        pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
         break
 
 def startSAPSeasion(username, password):
@@ -82,5 +81,5 @@ def startWhatsApp():
 
 
 
-startSAPSeasion('M-Hamed', '987951357')
-startWhatsApp()
+# startSAPSeasion('M-Hamed', '987951357')
+# startWhatsApp()
