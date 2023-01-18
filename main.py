@@ -1,4 +1,5 @@
 import setWorkspace
+import re
 import gspread
 import pyperclip as pc
 from time import sleep
@@ -11,6 +12,8 @@ sheet = service_account.open('Ai workflow')
 orders_task_list = sheet.worksheet('OrdersTaskList')
 orders = sheet.worksheet('Orders')
 
+orders_default = {'Quotation': '', 'Customer': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
+
 def sap_response_time():
     robo.waitImageToAppear(image='./images/getRT_position.png')
     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
@@ -19,6 +22,20 @@ def sap_response_time():
             if not pag.locateOnScreen(image='./images/zeroRT.png'):
                 pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
                 break
+
+def check_items():
+    while True:
+        if pag.locateOnScreen(image='./images/information.png'):
+            robo.click(image='./images/greenEnter.png')
+            sap_response_time()
+        elif pag.locateOnScreen(image='./images/delivery_proposal.png'):
+            robo.click(image='./images/delivery_proposal.png')
+            sap_response_time()
+        elif pag.locateOnScreen(image='./images/continue.png'):
+            robo.click(image='./images/continue.png')
+            sap_response_time()
+        else:
+            break
 
 # quotations = orders_task_list.get_values('E2:F')
 # status = orders_task_list.get_values('I2:I')
@@ -34,13 +51,17 @@ try:
         sap_response_time()
         pag.typewrite(quotation[0]+'\n')
         sap_response_time()
-        sleep(1)
-        if pag.locateOnScreen(image='./images/makkah.png', confidence=0.7) is not None:
-            sales_office = 'S104'
-            print(sales_office)
-        if pag.locateOnScreen(image='./images/mmwm.png', confidence=0.7) is not None:
-            storage_location = 'BN1'
-            print(storage_location)
+        while True:
+            if pag.locateOnScreen(image='./images/makkah.png', confidence=0.7) is not None:
+                sales_office = 'S104'
+                print(sales_office)
+                break
+        while True:
+            if pag.locateOnScreen(image='./images/mmwm.png', confidence=0.7) is not None:
+                storage_location = 'BN1'
+                print(storage_location)
+                break
+    
         robo.click(image='./images/sales_document.png')
         robo.click(image='./images/create_subsequent_order.png')
         sap_response_time()
@@ -52,9 +73,18 @@ try:
         sap_response_time()
         robo.click(image='./images/copy.png')
         sap_response_time()
+        check_items()
         robo.click(image='./images/sales_document.png')
         robo.click(image='./images/deliver.png')
         sap_response_time()
+        if pag.locateOnScreen(image='./images/create_delivery_order.png'):
+            while True:
+                pag.hotkey('enter')
+                sap_response_time
+                if not pag.locateOnScreen(image='.images/create_delivery_order.png'):
+                    break
+                else:
+                    sleep(1)
         robo.click(image='./images/hat.png')
         sap_response_time()
         if pag.locateOnScreen(image='./images/administration.png'):
@@ -64,6 +94,16 @@ try:
         pag.hotkey('ctrl', 'v')
         robo.click(image='./images/save.png')
         sap_response_time()
+        pag.hotkey('ctrl', 'c')
+        order = pc.paste()
+        robo.doubleClick(image='./images/has_been_saved.png')
+        sap_response_time()
+        robo.click(image='./images/bold_delivery.png')
+        pag.tripleClick()
+        pag.hotkey('ctrl', 'c')
+        delivery = pc.paste()
+        delivery = re.findall(r'\d+', delivery)
+        delivery = delivery[0]
         print(quotation[0])
 
 except gspread.exceptions.APIError:
