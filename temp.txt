@@ -1,0 +1,6 @@
+﻿	Makkah WH Quot			52118930
+	Sold-to			300377				قرطاسية الهدى الجموم
+
+	Status overview														User status			System status
+
+		Current hdr status				Not referenced			Nothing rejected						Q002			REL
