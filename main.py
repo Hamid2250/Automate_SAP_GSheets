@@ -53,51 +53,52 @@ def update_orders_task_list():
     # all_orders_task = orders_task_list.get_all_records()
     quotations = [d["Quotation"] for d in all_orders_task]
     for q in quotations:
-        if all_orders_task[quotations.index(q)]["Need Approval"] == "":
-            robo.click(image='./images/command_box.png')
-            pag.typewrite('/N VA22\n')
-            sap_response_time()
-            pag.typewrite(str(q))
-            sap_response_time()
-            robo.click(image='./images/status_overview.png')
-            sap_response_time()
-            if pag.locateOnScreen(image='./images/information.png'):
+        if all_orders_task[quotations.index(q)]["Finished Date"] == "":
+            if all_orders_task[quotations.index(q)]["Need Approval"] == "" or all_orders_task[quotations.index(q)]["Approved"] == "":
+                robo.click(image='./images/command_box.png')
+                pag.typewrite('/N VA22\n')
+                sap_response_time()
+                pag.typewrite(str(q))
+                sap_response_time()
+                robo.click(image='./images/status_overview.png')
+                sap_response_time()
+                if pag.locateOnScreen(image='./images/information.png'):
+                    robo.click(image='./images/greenEnter.png')
+                    sap_response_time()
+                pag.hotkey('shift', 'f8')
+                sap_response_time()
+                robo.click(image='./images/text_with_tabs.png')
                 robo.click(image='./images/greenEnter.png')
                 sap_response_time()
-            pag.hotkey('shift', 'f8')
-            sap_response_time()
-            robo.click(image='./images/text_with_tabs.png')
-            robo.click(image='./images/greenEnter.png')
-            sap_response_time()
-            pag.hotkey('shift', 'tab')
-            pag.typewrite(os.getcwd())
-            pag.hotkey('tab')
-            pag.typewrite('temp.txt')
-            pag.hotkey('tab')
-            pag.typewrite('4110')
-            pag.hotkey('ctrl', 's')
-            sap_response_time()
-            robo.click(image='./images/command_box.png')
-            pag.typewrite('/N\n')
-            sap_response_time()
-            current_row = orders_task_list.find(str(q)).row
-            info = get_quote_status()
-            current_task = all_orders_task[quotations.index(q)]
-            if info[2] == 'Q000':
-                update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'NO',}
-                update_task = dict(current_task, **update_task)
-                update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
-            elif info[2] == 'Q004':
-                update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES', 'Approved': 'YES'}
-                update_task = dict(current_task, **update_task)
-                update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
-            elif info[2] == 'Q002' or info[2] == 'Q003':
-                update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES',}
-                update_task = dict(current_task, **update_task)
-                update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                pag.hotkey('shift', 'tab')
+                pag.typewrite(os.getcwd())
+                pag.hotkey('tab')
+                pag.typewrite('temp.txt')
+                pag.hotkey('tab')
+                pag.typewrite('4110')
+                pag.hotkey('ctrl', 's')
+                sap_response_time()
+                robo.click(image='./images/command_box.png')
+                pag.typewrite('/N\n')
+                sap_response_time()
+                current_row = orders_task_list.find(str(q)).row
+                info = get_quote_status()
+                current_task = all_orders_task[quotations.index(q)]
+                if info[2] == 'Q000':
+                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'NO',}
+                    update_task = dict(current_task, **update_task)
+                    update_task = list(update_task.values())
+                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                elif info[2] == 'Q004':
+                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES', 'Approved': 'YES'}
+                    update_task = dict(current_task, **update_task)
+                    update_task = list(update_task.values())
+                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                elif info[2] == 'Q002' or info[2] == 'Q003':
+                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES',}
+                    update_task = dict(current_task, **update_task)
+                    update_task = list(update_task.values())
+                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
 
 def transfer_quotations():
     # all_orders_task = orders_task_list.get_all_records()
@@ -197,14 +198,15 @@ def update_orders_from_orders_tasks_list():
 
 
 
-# while True:
-#     try:
-#         all_orders_task = orders_task_list.get_all_records()
-#         update_orders_task_list()
-#         transfer_quotations()
+while True:
+    try:
+        all_orders_task = orders_task_list.get_all_records()
+        update_orders_task_list()
+        transfer_quotations()
+        sleep(60)
 
-#     except gspread.exceptions.APIError:
-#         sleep(60)
+    except gspread.exceptions.APIError:
+        sleep(120)
 
 
 
