@@ -19,24 +19,26 @@ orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer N
 orders_default = {'Quotation': '', 'Customer': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
 
 ## Waiting SAP to finish processing by images ##
-# def sap_response_time(): # this has issue if last response was same time it stuck in loop
-#     robo.waitImageToAppear(image='./images/getRT_position.png')
-#     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
-#     while True:
-#         if not pag.locateOnScreen(image='./images/lastRT.png'):
-#             if not pag.locateOnScreen(image='./images/zeroRT.png'):
-#                 pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
-#                 break
+def sap_response_time_by_images():
+    robo.waitImageToAppear(image='./images/getRT_position.png')
+    ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
+    while True:
+        if not pag.locateOnScreen(image='./images/lastRT.png'):
+            if not pag.locateOnScreen(image='./images/zeroRT.png'):
+                pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
+                return True
 
 ## Waiting SAP to finish processing by pixel color ##
-def sap_response_time(x=39, y=37, red=242, green=242, blue=242):
+def sap_response_time_by_pixel_color(x=39, y=37, red=242, green=242, blue=242):
     while True:
         pix = pag.pixel(x, y)
         if pix == (red, green, blue):
             sleep(0.4)
-            break
-        else:
-            sleep(0.3)
+            return True
+
+def sap_response_time():
+    if sap_response_time_by_images() or sap_response_time_by_pixel_color():
+        pass
 
 def check_items():
     while True:
@@ -138,6 +140,8 @@ def transfer_quotations():
                     elif pag.locateOnScreen(image='./images/sm01.png') is not None:
                         storage_location = 'SM1'
                         break
+                
+                # Transfer To Order
                 robo.click(image='./images/sales_document.png')
                 robo.click(image='./images/create_subsequent_order.png')
                 sap_response_time()
@@ -150,6 +154,8 @@ def transfer_quotations():
                 robo.click(image='./images/copy.png')
                 sap_response_time()
                 check_items()
+
+                # Transfer To Delivery
                 robo.click(image='./images/sales_document.png')
                 robo.click(image='./images/deliver.png')
                 sap_response_time()
@@ -170,6 +176,8 @@ def transfer_quotations():
                 pag.hotkey('ctrl', 'v')
                 robo.click(image='./images/save.png')
                 sap_response_time()
+                
+                # Update in Google Sheet
                 current_row = orders_task_list.find(str(q)).row
                 now = datetime.datetime.now()
                 current_task = all_orders_task[quotations.index(q)]
@@ -177,6 +185,29 @@ def transfer_quotations():
                 update_task = dict(current_task, **update_task)
                 update_task = list(update_task.values())
                 orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+
+                # Transfer To Invoice
+                # if storage_location == "SM1":
+                #     robo.click(image='./images/command_box.png')
+                #     pag.typewrite('/N VL03N\n')
+                #     sap_response_time()
+                #     robo.click(image='./images/outbound_delivery.png')
+                #     pag.hotkey('tab')
+                #     pag.hotkey('ctrl', 'c')
+                #     delivery = pc.paste()
+                #     robo.click(image='./images/command_box.png')
+                #     pag.typewrite('/N VL06G\n')
+                #     sap_response_time()
+                #     robo.click(image='./images/delivery_blue_bg.png')
+                #     robo.click(image='./images/filter.png')
+                #     sap_response_time()
+                #     pag.typewrite(str(delivery))
+                #     robo.click(image='./images/greenEnter.png')
+                #     sap_response_time()
+                #     robo.click(image='./images/delivery_check_box.png')
+
+
+
 
 def pdf_to_txt(f, pdf_file):
     pdf = PyPDF2.PdfReader(f)
