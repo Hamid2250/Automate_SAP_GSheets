@@ -18,14 +18,24 @@ orders = sheet.worksheet('Orders')
 orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
 orders_default = {'Quotation': '', 'Customer': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
 
-def sap_response_time():
-    robo.waitImageToAppear(image='./images/getRT_position.png')
-    ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
+## Waiting SAP to finish processing by images ##
+# def sap_response_time(): # this has issue if last response was same time it stuck in loop
+#     robo.waitImageToAppear(image='./images/getRT_position.png')
+#     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
+#     while True:
+#         if not pag.locateOnScreen(image='./images/lastRT.png'):
+#             if not pag.locateOnScreen(image='./images/zeroRT.png'):
+#                 pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
+#                 break
+
+## Waiting SAP to finish processing by pixel color ##
+def sap_response_time(x=39, y=37, red=242, green=242, blue=242):
     while True:
-        if not pag.locateOnScreen(image='./images/lastRT.png'):
-            if not pag.locateOnScreen(image='./images/zeroRT.png'):
-                pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
-                break
+        pix = pag.pixel(x, y)
+        if pix == (red, green, blue):
+            break
+        else:
+            sleep(0.3)
 
 def check_items():
     while True:
@@ -89,16 +99,19 @@ def update_orders_task_list():
                     update_task = dict(current_task, **update_task)
                     update_task = list(update_task.values())
                     orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], 'NO'
                 elif info[2] == 'Q004':
                     update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES', 'Approved': 'YES'}
                     update_task = dict(current_task, **update_task)
                     update_task = list(update_task.values())
                     orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'], all_orders_task[quotations.index(q)]['Approved'] = info[0], info[1], 'YES', 'YES'
                 elif info[2] == 'Q002' or info[2] == 'Q003':
                     update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES',}
                     update_task = dict(current_task, **update_task)
                     update_task = list(update_task.values())
                     orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], 'YES'
 
 def transfer_quotations():
     # all_orders_task = orders_task_list.get_all_records()
@@ -222,13 +235,5 @@ while True:
 #         delivery = delivery[0]
 #         print(quotation[0])
     
-
-
-
-
-
-
-
-        
 
 
