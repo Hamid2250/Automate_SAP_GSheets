@@ -33,6 +33,7 @@ def sap_response_time(x=39, y=37, red=242, green=242, blue=242):
     while True:
         pix = pag.pixel(x, y)
         if pix == (red, green, blue):
+            sleep(0.4)
             break
         else:
             sleep(0.3)
