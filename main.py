@@ -5,7 +5,7 @@ import datetime
 import PyPDF2
 import gspread
 import pyperclip as pc
-from time import sleep
+from time import sleep, time
 from pyrobogui import robo, pag
 from itertools import zip_longest
 
@@ -18,27 +18,24 @@ orders = sheet.worksheet('Orders')
 orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
 orders_default = {'Quotation': '', 'Customer': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
 
-## Waiting SAP to finish processing by images ##
-def sap_response_time_by_images():
-    robo.waitImageToAppear(image='./images/getRT_position.png')
-    ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
-    while True:
-        if not pag.locateOnScreen(image='./images/lastRT.png'):
-            if not pag.locateOnScreen(image='./images/zeroRT.png'):
-                pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
-                return True
-
-## Waiting SAP to finish processing by pixel color ##
-def sap_response_time_by_pixel_color(x=39, y=37, red=242, green=242, blue=242):
-    while True:
-        pix = pag.pixel(x, y)
-        if pix == (red, green, blue):
-            sleep(0.4)
-            return True
-
 def sap_response_time():
-    if sap_response_time_by_images() or sap_response_time_by_pixel_color():
-        pass
+    ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
+    start_time = time()
+    while True:
+        pix = pag.pixel(x=39, y=37)
+        if not pag.locateOnScreen(image='./images/lastRT.png') and not pag.locateOnScreen(image='./images/zeroRT.png'):
+            pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
+            break
+        elif pag.locateOnScreen(image='./images/zeroRT.png'):
+            start_time = time()
+        elif pix != (242, 242, 242):
+            start_time = time()
+            break
+        elif time() - start_time > 5:
+            print('timeout')
+            break
+        else:
+            sleep(1)
 
 def check_items():
     while True:
@@ -167,7 +164,8 @@ def transfer_quotations():
                             break
                         else:
                             sleep(1)
-                robo.click(image='./images/hat.png')
+                robo.waitImageToAppear(image='./images/hat.png', full_match=True)
+                robo.click(image='./images/hat.png', full_match=True)
                 sap_response_time()
                 if pag.locateOnScreen(image='./images/administration.png'):
                     robo.click(image='./images/administration.png')
@@ -176,18 +174,12 @@ def transfer_quotations():
                 pag.hotkey('ctrl', 'v')
                 robo.click(image='./images/save.png')
                 sap_response_time()
-                
-                # Update in Google Sheet
-                current_row = orders_task_list.find(str(q)).row
-                now = datetime.datetime.now()
-                current_task = all_orders_task[quotations.index(q)]
-                update_task = {"Finished Date" : now.strftime("%d/%m/%Y")}
-                update_task = dict(current_task, **update_task)
-                update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                robo.click(image='./images/command_box.png')
+                pag.typewrite('/N\n')
+                sap_response_time()
 
                 # Transfer To Invoice
-                if storage_location == "SM1":
+                if storage_location == 'SM1':
                     robo.click(image='./images/command_box.png')
                     pag.typewrite('/N VL03N\n')
                     sap_response_time()
@@ -197,6 +189,8 @@ def transfer_quotations():
                     delivery = pc.paste()
                     robo.click(image='./images/command_box.png')
                     pag.typewrite('/N VL06G\n')
+                    sap_response_time()
+                    robo.click(image='./images/execute.png')
                     sap_response_time()
                     robo.click(image='./images/delivery_blue_bg.png')
                     robo.click(image='./images/filter.png')
@@ -215,8 +209,17 @@ def transfer_quotations():
                     sap_response_time()
                     robo.click(image='./images/save.png')
                     sap_response_time()
-
-
+                
+                # Update in Google Sheet
+                current_row = orders_task_list.find(str(q)).row
+                now = datetime.datetime.now()
+                current_task = all_orders_task[quotations.index(q)]
+                finished_date = now.strftime("%d/%m/%Y")
+                update_task = {"Finished Date" : finished_date}
+                update_task = dict(current_task, **update_task)
+                update_task = list(update_task.values())
+                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                all_orders_task[quotations.index(q)]['Finished Date'] = finished_date
 
 def pdf_to_txt(f, pdf_file):
     pdf = PyPDF2.PdfReader(f)
@@ -226,7 +229,8 @@ def pdf_to_txt(f, pdf_file):
             f.write(text)
 
 def update_orders_from_orders_tasks_list():
-    all_orders_task = orders_task_list.get_all_records()
+    # all_orders_task = orders_task_list.get_all_records()
+    all_orders_task = [{'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': 52118966, 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': '25/01/2023'}]
     quotations = [d["Quotation"] for d in all_orders_task]
     for q in quotations:
         if all_orders_task[quotations.index(q)]["Finished Date"] != "":
@@ -237,30 +241,44 @@ def update_orders_from_orders_tasks_list():
             sap_response_time()
             robo.click(image='./images/document_flow.png')
             sap_response_time()
-            robo.click(image='./images/print_view.png')
+            pag.click(pag.locateCenterOnScreen(image='./images/print_view.png'), interval=0.2, clicks=2)
             sap_response_time()
+            robo.waitImageToAppear(image='./images/greenEnter.png')
             pag.typewrite('LOCAL')
-            robo.click(image='./images/greenEnter.png', offsetUp=60, offsetLeft=10)
-            robo.click(image='./images/immediately.png')
+            if not pag.locateOnScreen(image='./images/immediately.png'):
+                robo.click(image='./images/greenEnter.png', offsetUp=60, offsetLeft=10)
+                robo.waitImageToAppear(image='./images/immediately.png')
+                sleep(0.1)
+                pag.hotkey('down')
+                pag.hotkey('enter')
+                # robo.click(image='./images/immediately.png')
+                sleep(0.1)
             robo.click(image='./images/greenEnter.png')
             sap_response_time()
             if not pag.locateOnScreen(image='./images/print_to_pdf_selected.png'):
                 robo.click(image='./images/printer_drop_list.png')
                 robo.click(image='./images/print_to_pdf.png')
+            pag.hotkey('enter')
+            robo.waitImageToAppear(image='./images/file_name.png')
+            pag.typewrite(os.getcwd()+'\\temp.pdf')
+            pag.hotkey('enter')
+            sleep(2)
             with open('./temp.pdf', 'rb') as f:
-                pdf_to_txt(f, './temp.pdf')            
+                pdf_to_txt(f, './temp.pdf')
 
+update_orders_from_orders_tasks_list()
 
+# while True:
+#     try:
+#         all_orders_task = orders_task_list.get_all_records()
+#         starting_tasks_time = time()
+#         update_orders_task_list()
+#         transfer_quotations()
+#         if time() - starting_tasks_time < 60:
+#             sleep(60)
 
-while True:
-    try:
-        all_orders_task = orders_task_list.get_all_records()
-        update_orders_task_list()
-        transfer_quotations()
-        sleep(60)
-
-    except gspread.exceptions.APIError:
-        sleep(120)
+#     except gspread.exceptions.APIError:
+#         sleep(120)
 
 
 
@@ -276,5 +294,6 @@ while True:
 #         delivery = delivery[0]
 #         print(quotation[0])
     
+
 
 
