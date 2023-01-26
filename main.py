@@ -266,19 +266,19 @@ def update_orders_from_orders_tasks_list():
             with open('./temp.pdf', 'rb') as f:
                 pdf_to_txt(f, './temp.pdf')
 
-update_orders_from_orders_tasks_list()
+# update_orders_from_orders_tasks_list()
 
-# while True:
-#     try:
-#         all_orders_task = orders_task_list.get_all_records()
-#         starting_tasks_time = time()
-#         update_orders_task_list()
-#         transfer_quotations()
-#         if time() - starting_tasks_time < 60:
-#             sleep(60)
+while True:
+    try:
+        all_orders_task = orders_task_list.get_all_records()
+        starting_tasks_time = time()
+        update_orders_task_list()
+        transfer_quotations()
+        if time() - starting_tasks_time < 60:
+            sleep(60)
 
-#     except gspread.exceptions.APIError:
-#         sleep(120)
+    except gspread.exceptions.APIError:
+        sleep(120)
 
 
 
