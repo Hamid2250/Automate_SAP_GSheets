@@ -267,6 +267,25 @@ def update_orders_from_orders_tasks_list():
                 pdf_to_txt(f, './temp.pdf')
 
 # update_orders_from_orders_tasks_list()
+# delivery = ''
+# invoice = ''
+# with open('temp.txt', 'r', encoding='utf-8') as file:
+#     lines = file.readlines()
+#     for line in lines:
+#         if line.find('Business') != -1:
+#             customer_name = " ".join(line.split()[3:])
+#         if line.find('Quot') != -1:
+#             quotation = line.split()[3][2:]
+#         if line.find('SO') != -1:
+#             order = line.split()[3][2:]
+#         if line.find('Delivery') != -1:
+#             delivery = line.split()[3][2:]
+#             delivery_date = line.split()[4].replace('.', '/')
+#         if line.find('Billing') != -1:
+#             invoice = line.split()[3][2:]
+#             invoice_date = line.split()[4].replace('.', '/')
+
+
 
 while True:
     try:
