@@ -16,16 +16,19 @@ orders_task_list = sheet.worksheet('OrdersTaskList')
 orders = sheet.worksheet('Orders')
 
 orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
-orders_default = {'Quotation': '', 'Customer': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
+orders_default = {'Quotation': '', 'Customer Name': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
 
 def sap_response_time():
     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
     start_time = time()
     while True:
-        pix = pag.pixel(x=39, y=37)
-        if not pag.locateOnScreen(image='./images/lastRT.png') and not pag.locateOnScreen(image='./images/zeroRT.png'):
-            pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
-            break
+        pix = pag.pixel(x=200, y=37)
+        if pix == (242, 242, 242):
+            if not pag.locateOnScreen(image='./images/lastRT.png') and not pag.locateOnScreen(image='./images/zeroRT.png'):
+                pag.screenshot('./images/lastRT.png', region=(ms_position.left-150, ms_position.top, 185, 25))
+                break
+            elif pag.locateOnScreen(image='./images/lastRT.png') and not pag.locateOnScreen(image='./images/zeroRT.png'):
+                break
         elif pag.locateOnScreen(image='./images/zeroRT.png'):
             start_time = time()
         elif pix != (242, 242, 242):
@@ -39,16 +42,17 @@ def sap_response_time():
 
 def check_items():
     while True:
+        pix = pag.pixel(x=200, y=37)
         if pag.locateOnScreen(image='./images/information.png'):
-            robo.doubleClick(image='./images/greenEnter.png')
+            pag.hotkey('enter')
             sap_response_time()
         elif pag.locateOnScreen(image='./images/delivery_proposal.png'):
-            robo.doubleClick(image='./images/delivery_proposal.png')
+            pag.hotkey('f7')
             sap_response_time()
         elif pag.locateOnScreen(image='./images/continue.png'):
-            robo.doubleClick(image='./images/continue.png')
+            pag.hotkey('shift', 'f6')
             sap_response_time()
-        elif pag.locateOnScreen(image='./images/sales_document.png'):
+        elif pag.locateOnScreen(image='./images/sales_document.png') and pix == (242, 242, 242):
             break
 
 def get_quote_status():
@@ -153,7 +157,9 @@ def transfer_quotations():
                 check_items()
 
                 # Transfer To Delivery
+                robo.waitImageToAppear(image='./images/sales_document.png')
                 robo.click(image='./images/sales_document.png')
+                robo.waitImageToAppear(image='./images/deliver.png')
                 robo.click(image='./images/deliver.png')
                 sap_response_time()
                 if pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
@@ -230,7 +236,6 @@ def pdf_to_txt(f, pdf_file):
 
 def update_orders_from_orders_tasks_list():
     # all_orders_task = orders_task_list.get_all_records()
-    all_orders_task = [{'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': 52118966, 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': '25/01/2023'}]
     quotations = [d["Quotation"] for d in all_orders_task]
     for q in quotations:
         if all_orders_task[quotations.index(q)]["Finished Date"] != "":
@@ -251,7 +256,6 @@ def update_orders_from_orders_tasks_list():
                 sleep(0.1)
                 pag.hotkey('down')
                 pag.hotkey('enter')
-                # robo.click(image='./images/immediately.png')
                 sleep(0.1)
             robo.click(image='./images/greenEnter.png')
             sap_response_time()
@@ -265,27 +269,44 @@ def update_orders_from_orders_tasks_list():
             sleep(2)
             with open('./temp.pdf', 'rb') as f:
                 pdf_to_txt(f, './temp.pdf')
+            delivery = ''
+            invoice = ''
+            with open('temp.txt', 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                for line in lines:
+                    if line.find('Business') != -1:
+                        customer_name = " ".join(line.split()[3:])
+                    if line.find('Quot') != -1:
+                        quotation = line.split()[3][2:]
+                    if line.find('SO') != -1:
+                        order = line.split()[3][2:]
+                    if line.find('Delivery') != -1:
+                        delivery = line.split()[3][2:]
+                        delivery_date = line.split()[4].replace('.', '/')
+                    if line.find('Billing') != -1:
+                        invoice = line.split()[3][2:]
+                        invoice_date = line.split()[4].replace('.', '/')
+            order_pos = robo.imageNeddle(image='./images/so_order.png', imageNr='last')
+            robo.doubleClick(x=order_pos[0], y=order_pos[1])
+            sap_response_time()
+            robo.click(image='./images/ref_value.png', offsetDown=15)
+            pag.hotkey('ctrl', 'c')
+            order_price = pc.paste()
+            bill_pos = robo.imageNeddle(image='./images/accounting_document.png', imageNr='first')
+            robo.doubleClick(x=bill_pos[0], y=bill_pos[1])
+            sap_response_time()
+            robo.click(image='./images/ref_value.png', offsetDown=15)
+            pag.hotkey('ctrl', 'c')
+            invoice_price = pc.paste()
+            orders_update = {'Quotation': str(q), 'Customer Name': customer_name,
+                             'Order': order, 'Order price': order_price,
+                             'Delivery': delivery, 'Delivery Date': delivery_date,
+                             'Invoice': invoice, 'Invoice Date': invoice_date, 'Invoice price': invoice_price}
+            orders_update = dict(orders_default, **orders_update)
+            orders_update = list(orders_update.values())
+            orders.append_row(orders_update, value_input_option='USER_ENTERED')
 
 # update_orders_from_orders_tasks_list()
-# delivery = ''
-# invoice = ''
-# with open('temp.txt', 'r', encoding='utf-8') as file:
-#     lines = file.readlines()
-#     for line in lines:
-#         if line.find('Business') != -1:
-#             customer_name = " ".join(line.split()[3:])
-#         if line.find('Quot') != -1:
-#             quotation = line.split()[3][2:]
-#         if line.find('SO') != -1:
-#             order = line.split()[3][2:]
-#         if line.find('Delivery') != -1:
-#             delivery = line.split()[3][2:]
-#             delivery_date = line.split()[4].replace('.', '/')
-#         if line.find('Billing') != -1:
-#             invoice = line.split()[3][2:]
-#             invoice_date = line.split()[4].replace('.', '/')
-
-
 
 while True:
     try:
