@@ -70,6 +70,7 @@ def update_orders_task_list():
         if all_orders_task[quotations.index(q)]["Finished Date"] == "":
             if all_orders_task[quotations.index(q)]["Need Approval"] == "" or all_orders_task[quotations.index(q)]["Approved"] == "":
                 robo.click(image='./images/command_box.png')
+                sleep(0.2)
                 pag.typewrite('/N VA22\n')
                 sap_response_time()
                 pag.typewrite(str(q))
@@ -85,14 +86,16 @@ def update_orders_task_list():
                 robo.click(image='./images/greenEnter.png')
                 sap_response_time()
                 pag.hotkey('shift', 'tab')
-                pag.typewrite(os.getcwd())
+                pag.typewrite(os.getcwd(), interval=0.1)
                 pag.hotkey('tab')
                 pag.typewrite('temp.txt')
                 pag.hotkey('tab')
                 pag.typewrite('4110')
                 pag.hotkey('ctrl', 's')
+                sleep(1)
                 sap_response_time()
                 robo.click(image='./images/command_box.png')
+                sleep(0.2)
                 pag.typewrite('/N\n')
                 sap_response_time()
                 current_row = orders_task_list.find(str(q)).row
@@ -235,18 +238,25 @@ def pdf_to_txt(f, pdf_file):
             f.write(text)
 
 def update_orders_from_orders_tasks_list():
-    # all_orders_task = orders_task_list.get_all_records()
+    all_orders_task = orders_task_list.get_all_records()
+    all_orders = orders.get_all_records()
+    q_orders = [d['Quotation'] for d in all_orders]
     quotations = [d["Quotation"] for d in all_orders_task]
     for q in quotations:
-        if all_orders_task[quotations.index(q)]["Finished Date"] != "":
+        if all_orders_task[quotations.index(q)]["Finished Date"] != "" and q not in q_orders:
+            customer_name, order, delivery, delivery_date, invoice, invoice_date, invoice_price = '', '', '', '', '', '', ''
             robo.click(image='./images/command_box.png')
+            sleep(0.2)
             pag.typewrite('/N VA22\n')
             sap_response_time()
             pag.typewrite(str(q))
             sap_response_time()
-            robo.click(image='./images/document_flow.png')
+            robo.click(image='./images/document_flow.png', full_match=True)
+            sleep(0.2)
             sap_response_time()
-            pag.click(pag.locateCenterOnScreen(image='./images/print_view.png'), interval=0.2, clicks=2)
+            robo.click(image='./images/print_view.png', full_match=True)
+            sleep(0.2)
+            pag.click()
             sap_response_time()
             robo.waitImageToAppear(image='./images/greenEnter.png')
             pag.typewrite('LOCAL')
@@ -261,23 +271,25 @@ def update_orders_from_orders_tasks_list():
             sap_response_time()
             if not pag.locateOnScreen(image='./images/print_to_pdf_selected.png'):
                 robo.click(image='./images/printer_drop_list.png')
+                sleep(0.5)
                 robo.click(image='./images/print_to_pdf.png')
             pag.hotkey('enter')
             robo.waitImageToAppear(image='./images/file_name.png')
             pag.typewrite(os.getcwd()+'\\temp.pdf')
             pag.hotkey('enter')
-            sleep(2)
+            try:
+                robo.click(image='./images/yes.png')
+            except:
+                pass
+            sleep(3)
             with open('./temp.pdf', 'rb') as f:
                 pdf_to_txt(f, './temp.pdf')
-            delivery = ''
-            invoice = ''
+            sleep(2)
             with open('temp.txt', 'r', encoding='utf-8') as file:
                 lines = file.readlines()
                 for line in lines:
                     if line.find('Business') != -1:
                         customer_name = " ".join(line.split()[3:])
-                    if line.find('Quot') != -1:
-                        quotation = line.split()[3][2:]
                     if line.find('SO') != -1:
                         order = line.split()[3][2:]
                     if line.find('Delivery') != -1:
@@ -291,13 +303,15 @@ def update_orders_from_orders_tasks_list():
             sap_response_time()
             robo.click(image='./images/ref_value.png', offsetDown=15)
             pag.hotkey('ctrl', 'c')
-            order_price = pc.paste()
+            order_price = str(pc.paste())
+            sleep(0.5)
             bill_pos = robo.imageNeddle(image='./images/accounting_document.png', imageNr='first')
             robo.doubleClick(x=bill_pos[0], y=bill_pos[1])
             sap_response_time()
             robo.click(image='./images/ref_value.png', offsetDown=15)
             pag.hotkey('ctrl', 'c')
-            invoice_price = pc.paste()
+            invoice_price = str(pc.paste())
+            sleep(0.5)
             orders_update = {'Quotation': str(q), 'Customer Name': customer_name,
                              'Order': order, 'Order price': order_price,
                              'Delivery': delivery, 'Delivery Date': delivery_date,
@@ -305,6 +319,10 @@ def update_orders_from_orders_tasks_list():
             orders_update = dict(orders_default, **orders_update)
             orders_update = list(orders_update.values())
             orders.append_row(orders_update, value_input_option='USER_ENTERED')
+            robo.click(image='./images/command_box.png')
+            sleep(0.2)
+            pag.typewrite('/N\n')
+            sap_response_time()
 
 # update_orders_from_orders_tasks_list()
 
@@ -319,21 +337,6 @@ while True:
 
     except gspread.exceptions.APIError:
         sleep(120)
-
-
-
-#         pag.hotkey('ctrl', 'c')
-#         order = pc.paste()
-#         robo.doubleClick(image='./images/has_been_saved.png')
-#         sap_response_time()
-#         robo.click(image='./images/bold_delivery.png')
-#         pag.tripleClick()
-#         pag.hotkey('ctrl', 'c')
-#         delivery = pc.paste()
-#         delivery = re.findall(r'\d+', delivery)
-#         delivery = delivery[0]
-#         print(quotation[0])
-    
 
 
 
