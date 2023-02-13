@@ -52,6 +52,9 @@ def check_items():
         elif pag.locateOnScreen(image='./images/continue.png'):
             pag.hotkey('shift', 'f6')
             sap_response_time()
+        elif pag.locateOnScreen(image='./images/greenEnter.png'):
+            pag.hotkey('esc')
+            sap_response_time()
         elif pag.locateOnScreen(image='./images/sales_document.png') and pix == (242, 242, 242):
             break
 
@@ -60,7 +63,8 @@ def get_quote_status():
         lines = file.readlines()
         customer_name = " ".join(lines[1].split()[2:])
         customer = lines[1].split()[1]
-        q_state = lines[5].split()[7]
+        q_state_index = [i for i, elem in enumerate(lines[5].split()) if 'Q00' in elem]
+        q_state = lines[5].split()[q_state_index[0]]
         return customer_name, customer, q_state
 
 def update_orders_task_list():
@@ -73,13 +77,14 @@ def update_orders_task_list():
                 sleep(0.2)
                 pag.typewrite('/N VA22\n')
                 sap_response_time()
-                pag.typewrite(str(q))
+                pag.typewrite(str(q), interval=0.08)
                 sap_response_time()
                 robo.click(image='./images/status_overview.png')
                 sap_response_time()
                 if pag.locateOnScreen(image='./images/information.png'):
                     robo.click(image='./images/greenEnter.png')
                     sap_response_time()
+                robo.waitImageToDisappear(image='./images/status_overview.png')
                 pag.hotkey('shift', 'f8')
                 sap_response_time()
                 robo.click(image='./images/text_with_tabs.png')
@@ -149,7 +154,7 @@ def transfer_quotations():
                 robo.click(image='./images/sales_document.png')
                 robo.click(image='./images/create_subsequent_order.png')
                 sap_response_time()
-                robo.click(image='./images/sales_office.png')
+                robo.click(image='./images/sales_office.png', full_match=True)
                 pag.hotkey('tab')
                 pag.typewrite(sales_office)
                 pag.hotkey('tab')
@@ -162,17 +167,21 @@ def transfer_quotations():
                 # Transfer To Delivery
                 robo.waitImageToAppear(image='./images/sales_document.png')
                 robo.click(image='./images/sales_document.png')
-                robo.waitImageToAppear(image='./images/deliver.png')
+                robo.waitImageToAppear(image='./images/deliver.png', full_match=True)
                 robo.click(image='./images/deliver.png')
                 sap_response_time()
-                if pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
-                    while True:
-                        pag.hotkey('enter')
-                        sap_response_time
-                        if not pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
-                            break
-                        else:
-                            sleep(1)
+                try:
+                    robo.waitImageToAppear(image='./images/create_delivery_with_order.png', timeout=5)
+                    if pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
+                        while True:
+                            pag.hotkey('enter')
+                            sap_response_time
+                            if not pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
+                                break
+                            else:
+                                sleep(1)
+                except ValueError:
+                    pass
                 robo.waitImageToAppear(image='./images/hat.png', full_match=True)
                 robo.click(image='./images/hat.png', full_match=True)
                 sap_response_time()
@@ -227,7 +236,7 @@ def transfer_quotations():
                 update_task = {"Finished Date" : finished_date}
                 update_task = dict(current_task, **update_task)
                 update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
+                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}], value_input_option='USER_ENTERED')
                 all_orders_task[quotations.index(q)]['Finished Date'] = finished_date
 
 def pdf_to_txt(f, pdf_file):
@@ -298,20 +307,24 @@ def update_orders_from_orders_tasks_list():
                     if line.find('Billing') != -1:
                         invoice = line.split()[3][2:]
                         invoice_date = line.split()[4].replace('.', '/')
-            order_pos = robo.imageNeddle(image='./images/so_order.png', imageNr='last')
-            robo.doubleClick(x=order_pos[0], y=order_pos[1])
-            sap_response_time()
-            robo.click(image='./images/ref_value.png', offsetDown=15)
-            pag.hotkey('ctrl', 'c')
-            order_price = str(pc.paste())
-            sleep(0.5)
-            bill_pos = robo.imageNeddle(image='./images/accounting_document.png', imageNr='first')
-            robo.doubleClick(x=bill_pos[0], y=bill_pos[1])
-            sap_response_time()
-            robo.click(image='./images/ref_value.png', offsetDown=15)
-            pag.hotkey('ctrl', 'c')
-            invoice_price = str(pc.paste())
-            sleep(0.5)
+            if order != '':
+                order_pos = robo.imageNeddle(image='./images/so_order.png', imageNr='last')
+                robo.doubleClick(x=order_pos[0], y=order_pos[1])
+                sap_response_time()
+                robo.click(image='./images/ref_value.png', offsetDown=15)
+                sleep(0.1)
+                pag.hotkey('ctrl', 'c')
+                sleep(0.3)
+                order_price = str(pc.paste())
+                sleep(0.5)
+            if invoice != '':
+                bill_pos = robo.imageNeddle(image='./images/accounting_document.png', imageNr='first')
+                robo.doubleClick(x=bill_pos[0], y=bill_pos[1])
+                sap_response_time()
+                robo.click(image='./images/ref_value.png', offsetDown=15)
+                pag.hotkey('ctrl', 'c')
+                invoice_price = str(pc.paste())
+                sleep(0.5)
             orders_update = {'Quotation': str(q), 'Customer Name': customer_name,
                              'Order': order, 'Order price': order_price,
                              'Delivery': delivery, 'Delivery Date': delivery_date,
@@ -332,6 +345,7 @@ while True:
         starting_tasks_time = time()
         update_orders_task_list()
         transfer_quotations()
+        update_orders_from_orders_tasks_list()
         if time() - starting_tasks_time < 60:
             sleep(60)
 
