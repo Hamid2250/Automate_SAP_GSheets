@@ -162,7 +162,14 @@ def transfer_quotations():
                 sap_response_time()
                 robo.click(image='./images/copy.png')
                 sap_response_time()
-                check_items()
+                if pag.locateOnScreen(image='./images/credit_limit_exceeded.png'):
+                    check_items()
+                    robo.click(image='./images/command_box.png')
+                    pag.typewrite('/N VA22\n')
+                    sap_response_time()
+                    continue
+                else:
+                    check_items()
 
                 # Transfer To Delivery
                 robo.waitImageToAppear(image='./images/sales_document.png')
