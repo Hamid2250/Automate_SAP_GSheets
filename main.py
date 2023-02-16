@@ -15,7 +15,7 @@ sheet = service_account.open('Ai workflow')
 orders_task_list = sheet.worksheet('OrdersTaskList')
 orders = sheet.worksheet('Orders')
 
-orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
+orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '','Price': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
 orders_default = {'Quotation': '', 'Customer Name': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
 
 def sap_response_time():
@@ -71,12 +71,13 @@ def update_orders_task_list():
     # all_orders_task = orders_task_list.get_all_records()
     quotations = [d["Quotation"] for d in all_orders_task]
     for q in quotations:
-        if all_orders_task[quotations.index(q)]["Finished Date"] == "":
+        if all_orders_task[quotations.index(q)]["Finished Date"] == "" and all_orders_task[quotations.index(q)]["Need Approval"] != "NO":
             if all_orders_task[quotations.index(q)]["Need Approval"] == "" or all_orders_task[quotations.index(q)]["Approved"] == "":
                 robo.click(image='./images/command_box.png')
                 sleep(0.2)
                 pag.typewrite('/N VA22\n')
                 sap_response_time()
+                sleep(0.5)
                 pag.typewrite(str(q), interval=0.08)
                 sap_response_time()
                 robo.click(image='./images/status_overview.png')
@@ -99,6 +100,15 @@ def update_orders_task_list():
                 pag.hotkey('ctrl', 's')
                 sleep(1)
                 sap_response_time()
+                robo.click(image='./images/document_flow_text.png')
+                sap_response_time()
+                robo.doubleClick(image='./images/you_are_here_arrow.png')
+                sap_response_time()
+                robo.click(image='./images/ref_value.png', offsetDown=15)
+                sleep(0.2)
+                pag.hotkey('ctrl', 'c')
+                sleep(0.3)
+                quotation_price = str(pc.paste())
                 robo.click(image='./images/command_box.png')
                 sleep(0.2)
                 pag.typewrite('/N\n')
@@ -106,24 +116,30 @@ def update_orders_task_list():
                 current_row = orders_task_list.find(str(q)).row
                 info = get_quote_status()
                 current_task = all_orders_task[quotations.index(q)]
+                
+                # Don't need Approve
                 if info[2] == 'Q000':
-                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'NO',}
+                    update_task = {'Customer Name': info[0], 'Customer': info[1],'Price': quotation_price, 'Need Approval': 'NO',}
                     update_task = dict(current_task, **update_task)
                     update_task = list(update_task.values())
-                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
-                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], 'NO'
-                elif info[2] == 'Q004':
-                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES', 'Approved': 'YES'}
-                    update_task = dict(current_task, **update_task)
-                    update_task = list(update_task.values())
-                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
-                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'], all_orders_task[quotations.index(q)]['Approved'] = info[0], info[1], 'YES', 'YES'
+                    orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Price'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], quotation_price, 'NO'
+                
+                # Need Approval
                 elif info[2] == 'Q002' or info[2] == 'Q003':
-                    update_task = {'Customer Name': info[0], 'Customer': info[1], 'Need Approval': 'YES',}
+                    update_task = {'Customer Name': info[0], 'Customer': info[1],'Price': quotation_price, 'Need Approval': 'YES',}
                     update_task = dict(current_task, **update_task)
                     update_task = list(update_task.values())
-                    orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}])
-                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], 'YES'
+                    orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Price'], all_orders_task[quotations.index(q)]['Need Approval'] = info[0], info[1], quotation_price, 'YES'
+                
+                # Approved
+                elif info[2] == 'Q004':
+                    update_task = {'Customer Name': info[0], 'Customer': info[1],'Price': quotation_price, 'Need Approval': 'YES', 'Approved': 'YES'}
+                    update_task = dict(current_task, **update_task)
+                    update_task = list(update_task.values())
+                    orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}])
+                    all_orders_task[quotations.index(q)]['Customer Name'], all_orders_task[quotations.index(q)]['Customer'], all_orders_task[quotations.index(q)]['Price'], all_orders_task[quotations.index(q)]['Need Approval'], all_orders_task[quotations.index(q)]['Approved'] = info[0], info[1], quotation_price, 'YES', 'YES'
 
 def transfer_quotations():
     # all_orders_task = orders_task_list.get_all_records()
@@ -243,7 +259,7 @@ def transfer_quotations():
                 update_task = {"Finished Date" : finished_date}
                 update_task = dict(current_task, **update_task)
                 update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:N{current_row}', 'values': [update_task]}], value_input_option='USER_ENTERED')
+                orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}], value_input_option='USER_ENTERED')
                 all_orders_task[quotations.index(q)]['Finished Date'] = finished_date
 
 def pdf_to_txt(f, pdf_file):
@@ -254,7 +270,7 @@ def pdf_to_txt(f, pdf_file):
             f.write(text)
 
 def update_orders_from_orders_tasks_list():
-    all_orders_task = orders_task_list.get_all_records()
+    # all_orders_task = orders_task_list.get_all_records()
     all_orders = orders.get_all_records()
     q_orders = [d['Quotation'] for d in all_orders]
     quotations = [d["Quotation"] for d in all_orders_task]
@@ -344,7 +360,6 @@ def update_orders_from_orders_tasks_list():
             pag.typewrite('/N\n')
             sap_response_time()
 
-# update_orders_from_orders_tasks_list()
 
 while True:
     try:
@@ -358,6 +373,4 @@ while True:
 
     except gspread.exceptions.APIError:
         sleep(120)
-
-
 
