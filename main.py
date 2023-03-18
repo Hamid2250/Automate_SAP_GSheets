@@ -15,8 +15,13 @@ sheet = service_account.open('Ai workflow')
 orders_task_list = sheet.worksheet('OrdersTaskList')
 orders = sheet.worksheet('Orders')
 
-orders_task_list_default = {'Created by': '', 'Create DateTime': '', 'Customer Name': '', 'Customer': '', 'Quotation': '','Price': '', 'Need Approval': '', 'Brand Managers': '', 'Financial': '', 'Approved': '', 'Creditlimit': '', 'Branch Manager': '', 'CL Financial': '', 'CL Approved': '', 'Finished Date': ''}
-orders_default = {'Quotation': '', 'Customer Name': '', 'Order': '', 'Order price': '', 'Delivery': '', 'Delivery Date': '', 'Invoice': '', 'Invoice Date': '', 'Invoice price': '', 'Received': '', 'Notes': ''}
+# Get all column names
+orders_task_list_column_names = orders_task_list.row_values(1)
+orders_column_names = orders.row_values(1)
+# Create a dictionary with empty values
+orders_task_list_default = dict.fromkeys(orders_task_list_column_names, '')
+orders_default = dict.fromkeys(orders_column_names, '')
+
 
 def sap_response_time():
     ms_position = pag.locateOnScreen(image='./images/getRT_position.png')
@@ -39,6 +44,7 @@ def sap_response_time():
             break
         else:
             sleep(1)
+    sleep(1)
 
 def check_items():
     while True:
@@ -80,6 +86,7 @@ def update_orders_task_list():
                 sleep(0.5)
                 pag.typewrite(str(q), interval=0.08)
                 sap_response_time()
+                robo.waitImageToAppear(image='./images/document_text.png')
                 robo.click(image='./images/status_overview.png')
                 sap_response_time()
                 if pag.locateOnScreen(image='./images/information.png'):
@@ -92,23 +99,25 @@ def update_orders_task_list():
                 robo.click(image='./images/greenEnter.png')
                 sap_response_time()
                 pag.hotkey('shift', 'tab')
-                pag.typewrite(os.getcwd(), interval=0.1)
+                pag.typewrite(os.getcwd())
                 pag.hotkey('tab')
                 pag.typewrite('temp.txt')
                 pag.hotkey('tab')
                 pag.typewrite('4110')
                 pag.hotkey('ctrl', 's')
-                sleep(1)
                 sap_response_time()
-                robo.click(image='./images/document_flow_text.png')
-                sap_response_time()
-                robo.doubleClick(image='./images/you_are_here_arrow.png')
-                sap_response_time()
-                robo.click(image='./images/ref_value.png', offsetDown=15)
-                sleep(0.2)
-                pag.hotkey('ctrl', 'c')
-                sleep(0.3)
-                quotation_price = str(pc.paste())
+                if all_orders_task[quotations.index(q)]["Price"] == "":
+                    robo.click(image='./images/document_flow_text.png')
+                    sap_response_time()
+                    robo.doubleClick(image='./images/you_are_here_arrow.png')
+                    sap_response_time()
+                    robo.click(image='./images/ref_value.png', offsetDown=15)
+                    sleep(0.2)
+                    pag.hotkey('ctrl', 'c')
+                    sleep(0.3)
+                    quotation_price = str(pc.paste())
+                else:
+                    quotation_price = str(all_orders_task[quotations.index(q)]["Price"])
                 robo.click(image='./images/command_box.png')
                 sleep(0.2)
                 pag.typewrite('/N\n')
@@ -147,120 +156,125 @@ def transfer_quotations():
     for q in quotations:
         if all_orders_task[quotations.index(q)]["Finished Date"] == "":
             if all_orders_task[quotations.index(q)]["Need Approval"] == "NO" or all_orders_task[quotations.index(q)]["Approved"] == "YES":
-                storage_location = None
-                sales_office = None
-                robo.click(image='./images/command_box.png')
-                pag.typewrite('/N VA22\n')
-                sap_response_time()
-                pag.typewrite(str(q)+'\n')
-                sap_response_time()
-                while True:
-                    if pag.locateOnScreen(image='./images/makkah.png') is not None:
-                        sales_office = 'S104'
-                        break
-                while True:
-                    if pag.locateOnScreen(image='./images/mmwm.png') is not None:
-                        storage_location = 'BN1'
-                        break
-                    elif pag.locateOnScreen(image='./images/sm01.png') is not None:
-                        storage_location = 'SM1'
-                        break
-                
-                # Transfer To Order
-                robo.click(image='./images/sales_document.png')
-                robo.click(image='./images/create_subsequent_order.png')
-                sap_response_time()
-                robo.click(image='./images/sales_office.png', full_match=True)
-                pag.hotkey('tab')
-                pag.typewrite(sales_office)
-                pag.hotkey('tab')
-                pag.typewrite(storage_location+'\n')
-                sap_response_time()
-                robo.click(image='./images/copy.png')
-                sap_response_time()
-                if pag.locateOnScreen(image='./images/credit_limit_exceeded.png'):
-                    check_items()
+                if (all_orders_task[quotations.index(q)]["Creditlimit"] == "YES" and all_orders_task[quotations.index(q)]["CL Financial"] == "YES") or (all_orders_task[quotations.index(q)]["Creditlimit"] == ""):
+                    storage_location = None
+                    sales_office = None
                     robo.click(image='./images/command_box.png')
                     pag.typewrite('/N VA22\n')
                     sap_response_time()
-                    continue
-                else:
-                    check_items()
-
-                # Transfer To Delivery
-                robo.waitImageToAppear(image='./images/sales_document.png')
-                robo.click(image='./images/sales_document.png')
-                robo.waitImageToAppear(image='./images/deliver.png', full_match=True)
-                robo.click(image='./images/deliver.png')
-                sap_response_time()
-                try:
-                    robo.waitImageToAppear(image='./images/create_delivery_with_order.png', timeout=5)
-                    if pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
-                        while True:
-                            pag.hotkey('enter')
-                            sap_response_time
-                            if not pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
-                                break
-                            else:
-                                sleep(1)
-                except ValueError:
-                    pass
-                robo.waitImageToAppear(image='./images/hat.png', full_match=True)
-                robo.click(image='./images/hat.png', full_match=True)
-                sap_response_time()
-                if pag.locateOnScreen(image='./images/administration.png'):
-                    robo.click(image='./images/administration.png')
+                    pag.typewrite(str(q)+'\n')
                     sap_response_time()
-                pc.copy('تحضير وارسال فوري')
-                pag.hotkey('ctrl', 'v')
-                robo.click(image='./images/save.png')
-                sap_response_time()
-                robo.click(image='./images/command_box.png')
-                pag.typewrite('/N\n')
-                sap_response_time()
-
-                # Transfer To Invoice
-                if storage_location == 'SM1':
-                    robo.click(image='./images/command_box.png')
-                    pag.typewrite('/N VL03N\n')
+                    while True:
+                        if pag.locateOnScreen(image='./images/makkah.png') is not None:
+                            sales_office = 'S104'
+                            break
+                    while True:
+                        if pag.locateOnScreen(image='./images/mmwm.png') is not None:
+                            storage_location = 'BN1'
+                            break
+                        elif pag.locateOnScreen(image='./images/sm01.png') is not None:
+                            storage_location = 'SM1'
+                            break
+                    
+                    # Transfer To Order
+                    robo.click(image='./images/sales_document.png')
+                    robo.click(image='./images/create_subsequent_order.png')
                     sap_response_time()
-                    robo.click(image='./images/outbound_delivery.png')
+                    robo.click(image='./images/sales_office.png', full_match=True)
                     pag.hotkey('tab')
-                    pag.hotkey('ctrl', 'c')
-                    delivery = pc.paste()
-                    robo.click(image='./images/command_box.png')
-                    pag.typewrite('/N VL06G\n')
+                    pag.typewrite(sales_office)
+                    pag.hotkey('tab')
+                    pag.typewrite(storage_location+'\n')
                     sap_response_time()
-                    robo.click(image='./images/execute.png')
+                    robo.click(image='./images/copy.png')
                     sap_response_time()
-                    robo.click(image='./images/delivery_blue_bg.png')
-                    robo.click(image='./images/filter.png')
+                    if pag.locateOnScreen(image='./images/credit_limit_exceeded.png'):
+                        check_items()
+                        robo.click(image='./images/command_box.png')
+                        pag.typewrite('/N VA22\n')
+                        sap_response_time()
+                        continue
+                    else:
+                        check_items()
+
+                    # Transfer To Delivery
+                    robo.waitImageToAppear(image='./images/sales_document.png')
+                    robo.click(image='./images/sales_document.png')
+                    robo.waitImageToAppear(image='./images/deliver.png', full_match=True)
+                    robo.click(image='./images/deliver.png')
                     sap_response_time()
-                    pag.typewrite(str(delivery))
-                    robo.click(image='./images/greenEnter.png')
+                    try:
+                        sap_response_time()
+                        robo.waitImageToAppear(image='./images/create_delivery_with_order.png', timeout=5)
+                        if pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
+                            while True:
+                                pag.hotkey('enter')
+                                sap_response_time()
+                                if not pag.locateOnScreen(image='./images/create_delivery_with_order.png'):
+                                    break
+                                else:
+                                    sleep(1)
+                    except ValueError:
+                        pass
+                    robo.waitImageToAppear(image='./images/hat.png', full_match=True)
+                    robo.click(image='./images/hat.png', full_match=True)
                     sap_response_time()
-                    robo.click(image='./images/delivery_check_box.png')
-                    robo.click(image='./images/post_goods_issue.png')
-                    robo.click(image='./images/greenEnter.png')
-                    sap_response_time()
-                    robo.click(image='./images/command_box.png')
-                    pag.typewrite('/N VF01\n')
-                    sap_response_time()
-                    pag.hotkey('enter')
-                    sap_response_time()
+                    if pag.locateOnScreen(image='./images/administration.png'):
+                        robo.click(image='./images/administration.png')
+                        sap_response_time()
+                    if all_orders_task[quotations.index(q)]["Delivery Note"] != "": 
+                        pc.copy(all_orders_task[quotations.index(q)]["Delivery Note"])
+                    else:
+                        pc.copy('تحضير وإرسال فوري')
+                    pag.hotkey('ctrl', 'v')
                     robo.click(image='./images/save.png')
                     sap_response_time()
-                
-                # Update in Google Sheet
-                current_row = orders_task_list.find(str(q)).row
-                now = datetime.datetime.now()
-                current_task = all_orders_task[quotations.index(q)]
-                finished_date = now.strftime("%d/%m/%Y")
-                update_task = {"Finished Date" : finished_date}
-                update_task = dict(current_task, **update_task)
-                update_task = list(update_task.values())
-                orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}], value_input_option='USER_ENTERED')
-                all_orders_task[quotations.index(q)]['Finished Date'] = finished_date
+                    robo.click(image='./images/command_box.png')
+                    pag.typewrite('/N\n')
+                    sap_response_time()
+
+                    # Transfer To Invoice
+                    # if storage_location == 'SM1':
+                    #     robo.click(image='./images/command_box.png')
+                    #     pag.typewrite('/N VL03N\n')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/outbound_delivery.png')
+                    #     pag.hotkey('tab')
+                    #     pag.hotkey('ctrl', 'c')
+                    #     delivery = pc.paste()
+                    #     robo.click(image='./images/command_box.png')
+                    #     pag.typewrite('/N VL06G\n')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/execute.png')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/delivery_blue_bg.png')
+                    #     robo.click(image='./images/filter.png')
+                    #     sap_response_time()
+                    #     pag.typewrite(str(delivery))
+                    #     robo.click(image='./images/greenEnter.png')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/delivery_check_box.png')
+                    #     robo.click(image='./images/post_goods_issue.png')
+                    #     robo.click(image='./images/greenEnter.png')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/command_box.png')
+                    #     pag.typewrite('/N VF01\n')
+                    #     sap_response_time()
+                    #     pag.hotkey('enter')
+                    #     sap_response_time()
+                    #     robo.click(image='./images/save.png')
+                    #     sap_response_time()
+                    
+                    # Update in Google Sheet
+                    current_row = orders_task_list.find(str(q)).row
+                    now = datetime.datetime.now()
+                    current_task = all_orders_task[quotations.index(q)]
+                    finished_date = now.strftime("%d/%m/%Y")
+                    update_task = {"Finished Date" : finished_date}
+                    update_task = dict(current_task, **update_task)
+                    update_task = list(update_task.values())
+                    orders_task_list.batch_update([{'range': f'A{current_row}:O{current_row}', 'values': [update_task]}], value_input_option='USER_ENTERED')
+                    all_orders_task[quotations.index(q)]['Finished Date'] = finished_date
 
 def pdf_to_txt(f, pdf_file):
     pdf = PyPDF2.PdfReader(f)
@@ -360,7 +374,6 @@ def update_orders_from_orders_tasks_list():
             pag.typewrite('/N\n')
             sap_response_time()
 
-
 while True:
     try:
         all_orders_task = orders_task_list.get_all_records()
@@ -373,4 +386,3 @@ while True:
 
     except gspread.exceptions.APIError:
         sleep(120)
-
