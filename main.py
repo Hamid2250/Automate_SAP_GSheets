@@ -307,7 +307,7 @@ def update_orders_from_orders_tasks_list():
             robo.waitImageToAppear(image='./images/greenEnter.png')
             pag.typewrite('LOCAL')
             if not pag.locateOnScreen(image='./images/immediately.png'):
-                robo.click(image='./images/greenEnter.png', offsetUp=60, offsetLeft=10)
+                robo.click(image='./images/sap_spool.png')
                 robo.waitImageToAppear(image='./images/immediately.png')
                 sleep(0.1)
                 pag.hotkey('down')
